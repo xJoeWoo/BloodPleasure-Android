@@ -5,9 +5,9 @@ import android.view.View
 import android.webkit.WebSettings
 import android.webkit.WebView
 import ng.bloodpleasure.MainActivity
-import ng.bloodpleasure.webview.BpJsInterface
-import ng.bloodpleasure.webview.BpWebChromeClient
-import ng.bloodpleasure.webview.BpWebViewClient
+import ng.bloodpleasure.ui.webview.BpJsInterface
+import ng.bloodpleasure.ui.webview.BpWebChromeClient
+import ng.bloodpleasure.ui.webview.BpWebViewClient
 import org.jetbrains.anko.*
 import org.jetbrains.anko.sdk25.coroutines.onClick
 

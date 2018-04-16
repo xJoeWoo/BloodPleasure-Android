@@ -1,4 +1,4 @@
-package ng.bloodpleasure.webview
+package ng.bloodpleasure.ui.webview
 
 import android.webkit.WebChromeClient
 

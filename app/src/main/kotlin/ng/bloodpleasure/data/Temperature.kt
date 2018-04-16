@@ -13,7 +13,7 @@ object Temperature {
 
     val observe: Flowable<TemperatureMessage> get() = subject
 
-    fun connect(source: Flowable<TemperatureData>): Disposable =
+    fun publish(source: Flowable<TemperatureData>): Disposable =
         source
             .map {
                 TemperatureMessage(
@@ -34,17 +34,3 @@ object Temperature {
 }
 
 
-data class TemperatureMessage(
-    val status: TemperatureMessageStatus,
-    val payload: TemperatureMessagePayload
-)
-
-sealed class TemperatureMessagePayload {
-    data class Data(val data: TemperatureData) : TemperatureMessagePayload()
-    data class Error(val throwable: Throwable) : TemperatureMessagePayload()
-}
-
-enum class TemperatureMessageStatus {
-    NORMAL,
-    ERROR
-}

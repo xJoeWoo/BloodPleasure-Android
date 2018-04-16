@@ -18,7 +18,7 @@ import ng.bloodpleasure.util.safeDispose
  */
 class TemperatureBluetoothHandler(
     private val rxBluetooth: RxBluetooth
-) : BluetoothHandler, TemperatureByteDataHandler {
+) : BluetoothHandler {
 
     companion object {
         const val DEVICE_ADDRESS = "98:D3:31:FB:5E:88"
@@ -139,11 +139,11 @@ class TemperatureBluetoothHandler(
                 }
             }
             .filter { it.isCompleted }
-            .toTemperatureData()
+            .map { TemperatureByteProcessor.process(it) }
             .publish()
             .autoConnect(2)
 
-        temperatureSubscribe = Temperature.connect(dataFlowable)
+        temperatureSubscribe = Temperature.publish(dataFlowable)
 
         readSubscribe = dataFlowable
             .subscribe({

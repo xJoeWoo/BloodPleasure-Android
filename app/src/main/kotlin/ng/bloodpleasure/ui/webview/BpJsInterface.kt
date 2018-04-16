@@ -1,4 +1,4 @@
-package ng.bloodpleasure.webview
+package ng.bloodpleasure.ui.webview
 
 /**
  * Created by Ng on 16/04/2018.
