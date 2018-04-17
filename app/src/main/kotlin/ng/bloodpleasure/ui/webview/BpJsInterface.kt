@@ -7,6 +7,7 @@ class BpJsInterface {
 
     companion object {
         const val JS_CLASS_NAME: String = "BloodPleasure"
+        const val JS_HARDWARE_VALUE_METHOD_NAME = "hardwareValue"
     }
 
 }

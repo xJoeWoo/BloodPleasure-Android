@@ -1,6 +1,7 @@
 package ng.bloodpleasure.data
 
 import io.reactivex.Flowable
+import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
 import io.reactivex.processors.PublishProcessor
 
@@ -11,7 +12,7 @@ object Temperature {
 
     private val subject: PublishProcessor<TemperatureMessage> = PublishProcessor.create()
 
-    val observe: Flowable<TemperatureMessage> get() = subject
+    val flowable: Flowable<TemperatureMessage> = subject
 
     fun publish(source: Flowable<TemperatureData>): Disposable =
         source
@@ -29,6 +30,7 @@ object Temperature {
                     )
                 )
             }
+            .observeOn(AndroidSchedulers.mainThread())
             .subscribe { subject.onNext(it) }
 
 }

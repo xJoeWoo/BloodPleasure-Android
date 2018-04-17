@@ -1,9 +1,11 @@
 package ng.bloodpleasure.util.bt
 
+import io.reactivex.Flowable
 import ng.bloodpleasure.data.TemperatureData
 import ng.bloodpleasure.data.TemperatureModes
 import ng.bloodpleasure.data.TemperatureStatus
 import ng.bloodpleasure.data.TemperatureUnits
+import ng.bloodpleasure.util.toFlowable
 
 /**
  * Created by Ng on 17/04/2018.
@@ -16,7 +18,7 @@ object TemperatureByteProcessor {
     const val TEMPERATURE_HIGH_FLAG = 5
     const val TEMPERATURE_LOW_FLAG = 6
 
-    fun process(bytesCollector: BytesCollector): TemperatureData {
+    fun process(bytesCollector: BytesCollector): Flowable<TemperatureData> {
 
         val values = bytesCollector.buffer
 
@@ -24,7 +26,7 @@ object TemperatureByteProcessor {
             when (values[UNIT_FLAG]) {
                 TemperatureUnits.Centigrade.value.toByte() -> TemperatureUnits.Centigrade
                 TemperatureUnits.Fahrenheit.value.toByte() -> TemperatureUnits.Fahrenheit
-                else -> throw IllegalArgumentException("Temp unit not supported")
+                else -> return Flowable.empty()
             }
 
         val status =
@@ -42,13 +44,13 @@ object TemperatureByteProcessor {
                 TemperatureModes.MEMORY.value.toByte() -> TemperatureModes.MEMORY
                 TemperatureModes.ROOM.value.toByte() -> TemperatureModes.ROOM
                 TemperatureModes.SURFACE.value.toByte() -> TemperatureModes.SURFACE
-                else -> throw IllegalArgumentException("Temp mode not supported")
+                else -> return Flowable.empty()
             }
 
         val value =
             values[TEMPERATURE_HIGH_FLAG] * 0x100 + values[TEMPERATURE_LOW_FLAG]
 
-        return TemperatureData(unit, status, mode, value)
+        return TemperatureData(unit, status, mode, value).toFlowable()
     }
 
 }

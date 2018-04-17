@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import com.github.ivbaranov.rxbluetooth.RxBluetooth
+import io.reactivex.disposables.Disposable
 import ng.bloodpleasure.data.Temperature
 import ng.bloodpleasure.ui.MainActivityUi
 import ng.bloodpleasure.ui.webview.BpJsInterface
@@ -16,6 +17,9 @@ import ng.bloodpleasure.util.bt.TemperatureBluetoothHandler
 import ng.bloodpleasure.util.bt.dispose
 import ng.bloodpleasure.util.bt.enableStatus
 import ng.bloodpleasure.util.e
+import ng.bloodpleasure.util.jsMethod
+import ng.bloodpleasure.util.safeDispose
+import ng.bloodpleasure.util.toJson
 import org.jetbrains.anko.longToast
 import org.jetbrains.anko.setContentView
 import org.jetbrains.anko.toast
@@ -24,7 +28,9 @@ class MainActivity : BaseActivity() {
 
     private val rxBluetooth: RxBluetooth by lazy { RxBluetooth(this) }
     private lateinit var ui: MainActivityUi
-    private lateinit var temperatureBluetoothHandler: TemperatureBluetoothHandler
+    private var temperatureBluetoothHandler: TemperatureBluetoothHandler? = null
+    private var hardwareSubscription: Disposable? = null
+    private var hardwareConnectionSubscription: Disposable? = null
 
     companion object {
         const val REQUEST_ENABLE_BT = 1
@@ -45,7 +51,18 @@ class MainActivity : BaseActivity() {
             connect()
         }
 
-        Temperature.observe.subscribe { it.e("Result") }
+        subscribeHardware()
+    }
+
+    private fun subscribeHardware() {
+        hardwareSubscription = Temperature.flowable.subscribe {
+            it.e("Result")
+            ui.webView.evaluateJavascript(
+                jsMethod(BpJsInterface.JS_HARDWARE_VALUE_METHOD_NAME, it.toJson())
+            ) {
+
+            }
+        }
     }
 
     override fun onRequestPermissionsResult(
@@ -77,15 +94,10 @@ class MainActivity : BaseActivity() {
     override fun onResume() {
         super.onResume()
         ui.jsStatus(true)
-
-
     }
 
 
     fun connect() {
-        "asdfasdf".e()
-
-
         when (rxBluetooth.enableStatus) {
             EnableStatus.NO_MODULE -> {
                 longToast("设备上没有蓝牙模块")
@@ -97,12 +109,14 @@ class MainActivity : BaseActivity() {
             }
 
             EnableStatus.ENABLED -> {
-
-
-                temperatureBluetoothHandler = TemperatureBluetoothHandler(rxBluetooth)
-                temperatureBluetoothHandler.observeConnectionStatus.subscribe { it.e("BluetoothConnectionStatus") }
-                temperatureBluetoothHandler.connect()
-
+                temperatureBluetoothHandler = TemperatureBluetoothHandler(rxBluetooth).apply {
+                    hardwareConnectionSubscription =
+                            observeConnectionStatus
+                                .subscribe { it.e("BluetoothConnectionStatus") }
+                                .also {
+                                    connect()
+                                }
+                }
             }
         }
     }
@@ -115,7 +129,9 @@ class MainActivity : BaseActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        temperatureBluetoothHandler.dispose()
+        hardwareSubscription.safeDispose()
+        hardwareConnectionSubscription.safeDispose()
+        temperatureBluetoothHandler?.dispose()
         rxBluetooth.dispose()
     }
 
