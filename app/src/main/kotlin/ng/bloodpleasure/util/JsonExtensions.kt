@@ -1,16 +1,17 @@
 package ng.bloodpleasure.util
 
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import com.fasterxml.jackson.core.type.TypeReference
+import com.fasterxml.jackson.databind.ObjectMapper
 
 /**
  * Created by Ng on 17/04/2018.
  */
 
-val gson: Gson = Gson()
 
-fun <T> T.toJson(): String = gson.toJson(this)
+val objectMapper: ObjectMapper = ObjectMapper()
 
-inline fun <reified T> String.fromJson(): T = gson.fromJson(this, typeTokenOf<T>().type)
+fun <T> T.toJson(): String = objectMapper.writeValueAsString(this)
 
-inline fun <reified T> typeTokenOf(): TypeToken<T> = object : TypeToken<T>() {}
+inline fun <reified T> String.fromJson(): T = objectMapper.readValue(this, ref<T>())
+
+inline fun <reified T> ref(): TypeReference<T> = object : TypeReference<T>() {}

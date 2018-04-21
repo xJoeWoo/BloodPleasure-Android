@@ -14,14 +14,9 @@ object Temperature {
 
     val flowable: Flowable<TemperatureMessage> = subject
 
-    fun publish(source: Flowable<TemperatureData>): Disposable =
+    fun publish(source: Flowable<TemperatureMessage>): Disposable =
         source
-            .map {
-                TemperatureMessage(
-                    TemperatureMessageStatus.NORMAL,
-                    TemperatureMessagePayload.Data(it)
-                )
-            }
+
             .onErrorResumeNext { it: Throwable ->
                 Flowable.just(
                     TemperatureMessage(

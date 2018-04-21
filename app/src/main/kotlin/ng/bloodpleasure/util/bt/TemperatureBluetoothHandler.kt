@@ -4,11 +4,13 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothSocket
 import com.github.ivbaranov.rxbluetooth.BluetoothConnection
 import com.github.ivbaranov.rxbluetooth.RxBluetooth
-import io.reactivex.Flowable
 import io.reactivex.Observable
 import io.reactivex.disposables.Disposable
 import io.reactivex.subjects.PublishSubject
 import ng.bloodpleasure.data.Temperature
+import ng.bloodpleasure.data.TemperatureMessage
+import ng.bloodpleasure.data.TemperatureMessagePayload
+import ng.bloodpleasure.data.TemperatureMessageStatus
 import ng.bloodpleasure.util.*
 import ng.bloodpleasure.util.bt.BluetoothHandler.Companion.SPP_UUID
 
@@ -44,7 +46,7 @@ class TemperatureBluetoothHandler(
 
     private val subject = PublishSubject.create<BluetoothConnectionStatus>()
 
-    val observeConnectionStatus: Observable<BluetoothConnectionStatus> = subject
+    val connectionStatus: Observable<BluetoothConnectionStatus> = subject
 
     fun connect() {
 
@@ -115,9 +117,7 @@ class TemperatureBluetoothHandler(
         subscribe {
 
             bluetoothConnection = BluetoothConnection(it).apply {
-
                 temperatureSubscribe = observeByteStream()
-                    .onErrorResumeNext(Flowable.empty())
                     .observeOnIO()
                     .scan(BytesCollector(LENGTH)) { collector, value ->
                         collector.apply {
@@ -144,6 +144,12 @@ class TemperatureBluetoothHandler(
                     }
                     .filter { it.isCompleted }
                     .flatMap { TemperatureByteProcessor.process(it) }
+                    .map {
+                        TemperatureMessage(
+                            TemperatureMessageStatus.NORMAL,
+                            TemperatureMessagePayload.Data(it)
+                        )
+                    }
                     .doOnNext {
                         it.e("Data")
                     }

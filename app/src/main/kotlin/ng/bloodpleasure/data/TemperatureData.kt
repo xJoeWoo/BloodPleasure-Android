@@ -7,6 +7,7 @@ data class TemperatureData(
     val unit: TemperatureUnits,
     val status: TemperatureStatus,
     val mode: TemperatureModes,
-    val value: Int
+    val value: Int,
+    val type: DataTypes = DataTypes.TEMPERATURE
 )
 

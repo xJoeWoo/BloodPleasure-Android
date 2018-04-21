@@ -2,12 +2,12 @@ package ng.bloodpleasure.ui
 
 import android.annotation.SuppressLint
 import android.view.View
-import android.webkit.WebSettings
 import android.webkit.WebView
 import ng.bloodpleasure.MainActivity
 import ng.bloodpleasure.ui.webview.BpJsInterface
 import ng.bloodpleasure.ui.webview.BpWebChromeClient
 import ng.bloodpleasure.ui.webview.BpWebViewClient
+import ng.bloodpleasure.util.statusBarHeight
 import org.jetbrains.anko.*
 import org.jetbrains.anko.sdk25.coroutines.onClick
 
@@ -26,30 +26,25 @@ class MainActivityUi(
     override fun createView(ui: AnkoContext<MainActivity>): View = ui.run {
 
         relativeLayout {
+            fitsSystemWindows = true
 
-
-            button("重连") {
-                onClick { ui.owner.connect() }
-            }.lparams {
-                width = wrapContent
-                height = wrapContent
-                alignParentBottom()
-                centerHorizontally()
-            }
+            WebView.setWebContentsDebuggingEnabled(true)
 
             webView = webView {
                 webViewClient = bpWebViewClient
                 webChromeClient = bpWebChromeClient
-                settings.useWideViewPort = true
-                settings.loadWithOverviewMode = true
-                settings.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
-                settings.javaScriptCanOpenWindowsAutomatically = true
+//                settings.useWideViewPort = true
+//                settings.loadWithOverviewMode = true
+//                settings.cacheMode = WebSettings.LOAD_NO_CACHE
+//                settings.javaScriptCanOpenWindowsAutomatically = true
                 settings.loadsImagesAutomatically = true
                 settings.defaultTextEncodingName = "utf-8"
                 settings.saveFormData = false
                 settings.allowFileAccess = false
                 settings.allowContentAccess = false
-                settings.setSupportZoom(false)
+                settings.domStorageEnabled = true
+                settings.databaseEnabled = true
+//                settings.setSupportZoom(false)
                 removeJavascriptInterface("searchBoxJavaBridge_")
                 removeJavascriptInterface("accessibility")
                 removeJavascriptInterface("accessibilityTraversal")
@@ -57,9 +52,24 @@ class MainActivityUi(
 
             }.lparams(matchParent, matchParent)
 
+            relativeLayout {
+                topPadding = ui.owner.statusBarHeight
+
+                button("刷新") {
+                    onClick { webView.reload() }
+                }.lparams(wrapContent, wrapContent) {
+                    alignParentTop()
+                    centerHorizontally()
+                }
+
+                button("重连") {
+                    onClick { ui.owner.connect() }
+                }.lparams(wrapContent, wrapContent) {
+                    alignParentBottom()
+                    centerHorizontally()
+                }
+            }.lparams(matchParent, matchParent)
         }
-
-
     }
 
 
