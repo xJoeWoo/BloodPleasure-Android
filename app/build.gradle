@@ -54,6 +54,13 @@ dependencies {
 
     implementation "com.github.ivbaranov:rxbluetooth2:$rx_bluetooth_version"
 
+    implementation "com.polidea.rxandroidble2:rxandroidble:$rx_ble_version"
+
     androidTestImplementation 'com.android.support.test:runner:1.0.1'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
+}
+kotlin {
+    experimental {
+        coroutines "enable"
+    }
 }

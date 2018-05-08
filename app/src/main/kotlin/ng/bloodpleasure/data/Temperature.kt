@@ -16,7 +16,6 @@ object Temperature {
 
     fun publish(source: Flowable<TemperatureMessage>): Disposable =
         source
-
             .onErrorResumeNext { it: Throwable ->
                 Flowable.just(
                     TemperatureMessage(

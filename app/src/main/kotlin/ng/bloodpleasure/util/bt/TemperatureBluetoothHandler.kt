@@ -12,7 +12,7 @@ import ng.bloodpleasure.data.TemperatureMessage
 import ng.bloodpleasure.data.TemperatureMessagePayload
 import ng.bloodpleasure.data.TemperatureMessageStatus
 import ng.bloodpleasure.util.*
-import ng.bloodpleasure.util.bt.BluetoothHandler.Companion.SPP_UUID
+import ng.bloodpleasure.util.bt.BluetoothHandler.Companion.TD_133_UUID
 
 /**
  * Created by Ng on 16/04/2018.
@@ -23,6 +23,7 @@ class TemperatureBluetoothHandler(
 
     companion object {
         const val DEVICE_ADDRESS = "98:D3:31:FB:5E:88"
+        const val DEVICE_NAME = "E-Smoke"
         const val LENGTH = 9
 
         const val HEAD_FIRST_BYTE = 0xFE.toByte()
@@ -64,7 +65,8 @@ class TemperatureBluetoothHandler(
                 it.e("DiscoveryState")
             }
 
-        val targetDevice = rxBluetooth.bondedDevices.firstOrNull { it.address == DEVICE_ADDRESS }
+//        val targetDevice = rxBluetooth.bondedDevices.firstOrNull { it.address == DEVICE_ADDRESS }
+        val targetDevice = rxBluetooth.bondedDevices.firstOrNull { it.name == DEVICE_NAME }
 
         if (targetDevice != null) {
             subject.onNext(BluetoothConnectionStatus.PAIRED)
@@ -79,7 +81,8 @@ class TemperatureBluetoothHandler(
         readSubscribe =
                 rxBluetooth.observeDevices()
                     .observeOnComputation()
-                    .filter { it.address == DEVICE_ADDRESS }
+//                    .filter { it.address == DEVICE_ADDRESS }
+                    .filter { it.name == DEVICE_NAME }
                     .firstOrError()
                     .toObservable()
                     .doOnNext {
@@ -102,7 +105,12 @@ class TemperatureBluetoothHandler(
 
     private fun Observable<BluetoothDevice>.createConnection(): Disposable =
         apply { subject.onNext(BluetoothConnectionStatus.CONNECTING) }
-            .flatMap { rxBluetooth.observeConnectDevice(it, SPP_UUID) }
+            .flatMap {
+                rxBluetooth.observeConnectDevice(
+                    it,
+                    TD_133_UUID.first().also { it.toString().e("asdf") })
+            }
+//            .map { it.createInsecureRfcommSocketToServiceRecord(SPP_UUID) }
             .observeOnIO()
             .doOnNext { subject.onNext(BluetoothConnectionStatus.CONNECTED) }
             .doOnError {

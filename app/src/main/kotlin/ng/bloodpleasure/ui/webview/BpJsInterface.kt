@@ -6,7 +6,11 @@ import android.webkit.JavascriptInterface
 /**
  * Created by Ng on 16/04/2018.
  */
-class BpJsInterface(private val hardwareId: String, private val onPageReady: () -> Unit) {
+class BpJsInterface(
+    private val hardwareId: String,
+    private val onPageReady: () -> Unit,
+    private val onMute: () -> Unit
+) {
 
     companion object {
         const val JS_CLASS_NAME: String = "BloodPleasure"
@@ -19,6 +23,11 @@ class BpJsInterface(private val hardwareId: String, private val onPageReady: () 
     @JavascriptInterface
     fun pageReady() {
         onPageReady()
+    }
+
+    @JavascriptInterface
+    fun mute() {
+        onMute()
     }
 
 }

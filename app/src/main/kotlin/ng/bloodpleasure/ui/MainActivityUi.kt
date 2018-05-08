@@ -33,10 +33,6 @@ class MainActivityUi(
             webView = webView {
                 webViewClient = bpWebViewClient
                 webChromeClient = bpWebChromeClient
-//                settings.useWideViewPort = true
-//                settings.loadWithOverviewMode = true
-//                settings.cacheMode = WebSettings.LOAD_NO_CACHE
-//                settings.javaScriptCanOpenWindowsAutomatically = true
                 settings.loadsImagesAutomatically = true
                 settings.defaultTextEncodingName = "utf-8"
                 settings.saveFormData = false
@@ -44,12 +40,10 @@ class MainActivityUi(
                 settings.allowContentAccess = false
                 settings.domStorageEnabled = true
                 settings.databaseEnabled = true
-//                settings.setSupportZoom(false)
                 removeJavascriptInterface("searchBoxJavaBridge_")
                 removeJavascriptInterface("accessibility")
                 removeJavascriptInterface("accessibilityTraversal")
                 addJavascriptInterface(bpJsInterface, BpJsInterface.JS_CLASS_NAME)
-
             }.lparams(matchParent, matchParent)
 
             relativeLayout {

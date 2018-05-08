@@ -8,10 +8,11 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.WindowManager
 import com.github.ivbaranov.rxbluetooth.RxBluetooth
-import io.reactivex.BackpressureStrategy
-import io.reactivex.Flowable
 import io.reactivex.disposables.Disposable
-import ng.bloodpleasure.data.*
+import ng.bloodpleasure.data.Temperature
+import ng.bloodpleasure.data.TemperatureMessage
+import ng.bloodpleasure.data.TemperatureMessagePayload
+import ng.bloodpleasure.data.TemperatureMessageStatus
 import ng.bloodpleasure.ui.MainActivityUi
 import ng.bloodpleasure.ui.webview.BpJsInterface
 import ng.bloodpleasure.ui.webview.BpWebChromeClient
@@ -25,7 +26,6 @@ import ng.bloodpleasure.util.bt.enableStatus
 import org.jetbrains.anko.longToast
 import org.jetbrains.anko.setContentView
 import org.jetbrains.anko.toast
-import java.util.concurrent.TimeUnit
 
 @SuppressLint("HardwareIds")
 class MainActivity : BaseActivity() {
@@ -58,16 +58,16 @@ class MainActivity : BaseActivity() {
         )
 
         ui = MainActivityUi(
-            BpJsInterface(androidId, { onPageReady() }),
+            BpJsInterface(androidId, { onPageReady() }, { onPageMute() }),
             BpWebViewClient(),
             BpWebChromeClient()
         )
         ui.setContentView(this)
         ui.webView.loadUrl("http://t.zoyoo.me/")
-        subscribeHardware()
     }
 
     private fun onPageReady() {
+        subscribeHardware()
         if (checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(
                 arrayOf(android.Manifest.permission.ACCESS_COARSE_LOCATION),
@@ -78,7 +78,12 @@ class MainActivity : BaseActivity() {
         }
     }
 
+    private fun onPageMute() {
+        unsubscribeHardware()
+    }
+
     private fun subscribeHardware() {
+        unsubscribeHardware()
         hardwareSubscription = Temperature.flowable.subscribe {
             it.e("Result")
             ui.webView.evaluateJavascript(
@@ -126,25 +131,25 @@ class MainActivity : BaseActivity() {
 
     fun connect() {
         disconnect()
-        if (isDebugging) {
-            hardwareConnectionSubscription = Temperature.publish(
-                Flowable
-                    .interval(0, 3000, TimeUnit.MILLISECONDS)
-                    .map {
-                        TemperatureMessage(
-                            TemperatureMessageStatus.NORMAL, TemperatureMessagePayload.Data(
-                                TemperatureData(
-                                    TemperatureUnits.Centigrade,
-                                    TemperatureStatus.NORMAL,
-                                    TemperatureModes.BODY,
-                                    (0..500).random()
-                                )
-                            )
-                        )
-                    }
-            )
-            return
-        }
+//        if (isDebugging) {
+//            hardwareConnectionSubscription = Temperature.publish(
+//                Flowable
+//                    .interval(0, 3000, TimeUnit.MILLISECONDS)
+//                    .map {
+//                        TemperatureMessage(
+//                            TemperatureMessageStatus.NORMAL, TemperatureMessagePayload.Data(
+//                                TemperatureData(
+//                                    TemperatureUnits.Centigrade,
+//                                    TemperatureStatus.NORMAL,
+//                                    TemperatureModes.BODY,
+//                                    (350..420).random()
+//                                )
+//                            )
+//                        )
+//                    }
+//            )
+//            return
+//        }
 
         when (rxBluetooth.enableStatus) {
             EnableStatus.NO_MODULE -> {
@@ -159,7 +164,6 @@ class MainActivity : BaseActivity() {
                 temperatureBluetoothHandler = TemperatureBluetoothHandler(rxBluetooth).apply {
                     hardwareConnectionSubscription =
                             connectionStatus
-
                                 .doOnNext {
                                     it.e("BluetoothConnectionStatus")
                                 }
@@ -169,10 +173,9 @@ class MainActivity : BaseActivity() {
                                         TemperatureMessagePayload.Connection(it)
                                     )
                                 }
-                                .let { Temperature.publish(it.toFlowable(BackpressureStrategy.LATEST)) }
-                                .also {
-                                    connect()
-                                }
+                                .subscribe { Temperature.publish(it.toFlowable()) }
+
+                    connect()
                 }
             }
         }
@@ -183,6 +186,10 @@ class MainActivity : BaseActivity() {
         temperatureBluetoothHandler?.dispose()
     }
 
+    private fun unsubscribeHardware() {
+        hardwareSubscription.safeDispose()
+    }
+
     override fun onStop() {
         super.onStop()
         ui.jsStatus(false)
@@ -191,7 +198,7 @@ class MainActivity : BaseActivity() {
     override fun onDestroy() {
         super.onDestroy()
         disconnect()
-        hardwareSubscription.safeDispose()
+        unsubscribeHardware()
         rxBluetooth.dispose()
     }
 
