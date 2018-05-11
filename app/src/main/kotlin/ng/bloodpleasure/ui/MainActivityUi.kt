@@ -3,6 +3,7 @@ package ng.bloodpleasure.ui
 import android.annotation.SuppressLint
 import android.view.View
 import android.webkit.WebView
+import android.widget.LinearLayout
 import ng.bloodpleasure.MainActivity
 import ng.bloodpleasure.ui.webview.BpJsInterface
 import ng.bloodpleasure.ui.webview.BpWebChromeClient
@@ -49,19 +50,21 @@ class MainActivityUi(
             relativeLayout {
                 topPadding = ui.owner.statusBarHeight
 
-                button("刷新") {
-                    onClick { webView.reload() }
-                }.lparams(wrapContent, wrapContent) {
-                    alignParentTop()
-                    centerHorizontally()
-                }
+                linearLayout {
+                    orientation = LinearLayout.HORIZONTAL
 
-                button("重连") {
-                    onClick { ui.owner.connect() }
-                }.lparams(wrapContent, wrapContent) {
+                    button("重连") {
+                        onClick { ui.owner.connect() }
+                    }
+
+                    button("刷新") {
+                        onClick { webView.reload() }
+                    }.lparams { leftMargin = 16 }
+                }.lparams {
                     alignParentBottom()
                     centerHorizontally()
                 }
+
             }.lparams(matchParent, matchParent)
         }
     }

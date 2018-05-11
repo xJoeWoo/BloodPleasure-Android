@@ -29,7 +29,7 @@ fun <T> Observable<T>.observeOnIO(): Observable<T> = observeOn(Schedulers.io())
 fun <T> Flowable<T>.observeOnIO(): Flowable<T> = observeOn(Schedulers.io())
 
 fun jsMethod(name: String, vararg params: Any?): String =
-    "javascript:$name(${params.joinToString()})"
+    "javascript:$name(${params.joinToString()})".also { it.e("JsCall") }
 
 fun <T> T.toObservable(): Observable<T> = Observable.just(this)
 

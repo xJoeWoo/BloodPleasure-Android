@@ -127,7 +127,7 @@ class MainActivity : BaseActivity() {
 //                        TemperatureMessage(
 //                            TemperatureMessageStatus.NORMAL, TemperatureMessagePayload.Data(
 //                                TemperatureData(
-//                                    TemperatureUnits.Centigrade,
+//                                    TemperatureUnits.CENTIGRADE,
 //                                    TemperatureStatus.NORMAL,
 //                                    TemperatureModes.BODY,
 //                                    (350..420).random()

@@ -206,8 +206,8 @@ class TemperatureBluetoothHandler(
 //                }
 //            }
 //            .filter { it.isCompleted }
-            .map { it.e("RawData"); BytesCollector(LENGTH, it.size, it) }
-            .flatMap { TemperatureByteProcessor.process(it) }
+            .map { it.toHex().e("RawData"); BytesCollector(LENGTH, it.size, it) }
+            .flatMap { TemperatureByteProcessor(it).process() }
             .doOnNext {
                 it.e("Data")
             }
