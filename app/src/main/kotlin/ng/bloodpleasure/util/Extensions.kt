@@ -52,3 +52,6 @@ fun ClosedRange<Int>.randoms(count: Long): IntStream =
 fun Any.wrapWithSingleQuotation(): String = "\'$this\'"
 
 fun Any.wrapWithQuotation(): String = "\"$this\""
+
+fun ByteArray.toHex() =
+    joinToString(separator = "") { it.toInt().and(0xff).toString(16).padStart(2, '0') }

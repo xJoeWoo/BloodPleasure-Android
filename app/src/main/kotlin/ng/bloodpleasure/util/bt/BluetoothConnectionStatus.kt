@@ -8,6 +8,8 @@ enum class BluetoothConnectionStatus {
     CONNECTING,
     CONNECTED,
     CONNECT_FAILED,
+    DISCONNECTED,
+    DISCONNECTING,
     READ_ERROR,
     WRITE_ERROR
 }

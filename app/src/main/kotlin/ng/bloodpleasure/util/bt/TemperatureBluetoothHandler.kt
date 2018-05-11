@@ -1,24 +1,26 @@
 package ng.bloodpleasure.util.bt
 
-import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothSocket
 import com.github.ivbaranov.rxbluetooth.BluetoothConnection
-import com.github.ivbaranov.rxbluetooth.RxBluetooth
+import com.polidea.rxandroidble2.RxBleClient
+import com.polidea.rxandroidble2.RxBleConnection
+import com.polidea.rxandroidble2.RxBleDevice
+import com.polidea.rxandroidble2.scan.ScanSettings
 import io.reactivex.Observable
 import io.reactivex.disposables.Disposable
+import io.reactivex.rxkotlin.toObservable
 import io.reactivex.subjects.PublishSubject
 import ng.bloodpleasure.data.Temperature
 import ng.bloodpleasure.data.TemperatureMessage
 import ng.bloodpleasure.data.TemperatureMessagePayload
 import ng.bloodpleasure.data.TemperatureMessageStatus
 import ng.bloodpleasure.util.*
-import ng.bloodpleasure.util.bt.BluetoothHandler.Companion.TD_133_UUID
+import ng.bloodpleasure.util.bt.BluetoothHandler.Companion.TD_133_WRITE_UUID
 
 /**
  * Created by Ng on 16/04/2018.
  */
 class TemperatureBluetoothHandler(
-    private val rxBluetooth: RxBluetooth
+    private val rxBluetooth: RxBleClient
 ) : BluetoothHandler {
 
     companion object {
@@ -53,17 +55,17 @@ class TemperatureBluetoothHandler(
 
         dispose()
 
-        bluetoothStateSubscribe = rxBluetooth.observeBluetoothState()
+        bluetoothStateSubscribe = rxBluetooth.observeStateChanges()
             .observeOnComputation()
             .subscribe {
                 it.e("BluetoothState")
             }
-
-        discoveryStateSubscribe = rxBluetooth.observeDiscovery()
-            .observeOnComputation()
-            .subscribe {
-                it.e("DiscoveryState")
-            }
+//
+//        discoveryStateSubscribe = rxBluetooth.observeDiscovery()
+//            .observeOnComputation()
+//            .subscribe {
+//                it.e("DiscoveryState")
+//            }
 
 //        val targetDevice = rxBluetooth.bondedDevices.firstOrNull { it.address == DEVICE_ADDRESS }
         val targetDevice = rxBluetooth.bondedDevices.firstOrNull { it.name == DEVICE_NAME }
@@ -73,21 +75,25 @@ class TemperatureBluetoothHandler(
             temperatureSubscribe = targetDevice.toObservable().createConnection()
             return
         }
+//
+//        if (rxBluetooth.isDiscovering) {
+//            rxBluetooth.cancelDiscovery()
+//        }
 
-        if (rxBluetooth.isDiscovering) {
-            rxBluetooth.cancelDiscovery()
-        }
+        subject.onNext(BluetoothConnectionStatus.DISCOVERING)
 
-        readSubscribe =
-                rxBluetooth.observeDevices()
+        temperatureSubscribe =
+                rxBluetooth.scanBleDevices(ScanSettings.Builder().build())
                     .observeOnComputation()
 //                    .filter { it.address == DEVICE_ADDRESS }
-                    .filter { it.name == DEVICE_NAME }
+                    .filter { it.bleDevice.name == DEVICE_NAME }
                     .firstOrError()
+                    .map { it.bleDevice }
                     .toObservable()
                     .doOnNext {
                         if (it != null) {
                             subject.onNext(BluetoothConnectionStatus.FOUND)
+
                         } else {
                             subject.onNext(BluetoothConnectionStatus.NOT_FOUND)
                         }
@@ -95,82 +101,130 @@ class TemperatureBluetoothHandler(
                     .doOnError {
                         it.e("DiscoveryDevice")
                         subject.onNext(BluetoothConnectionStatus.NOT_FOUND)
+                        dispose()
                     }
                     .createConnection()
 
-        subject.onNext(BluetoothConnectionStatus.DISCOVERING)
-        rxBluetooth.startDiscovery()
+
+//        rxBluetooth.startDiscovery()
     }
 
 
-    private fun Observable<BluetoothDevice>.createConnection(): Disposable =
-        apply { subject.onNext(BluetoothConnectionStatus.CONNECTING) }
-            .flatMap {
-                rxBluetooth.observeConnectDevice(
-                    it,
-                    TD_133_UUID.first().also { it.toString().e("asdf") })
+    private fun Observable<RxBleDevice>.createConnection(): Disposable =
+        doOnNext {
+            connectDeviceSubscribe = it.observeConnectionStateChanges()
+                .subscribe {
+                    it.e("BleConnectionState")
+                    subject.onNext(
+                        when (it!!) {
+                            RxBleConnection.RxBleConnectionState.CONNECTING -> BluetoothConnectionStatus.CONNECTING
+                            RxBleConnection.RxBleConnectionState.CONNECTED -> BluetoothConnectionStatus.CONNECTED
+                            RxBleConnection.RxBleConnectionState.DISCONNECTED -> BluetoothConnectionStatus.DISCONNECTED
+                            RxBleConnection.RxBleConnectionState.DISCONNECTING -> BluetoothConnectionStatus.DISCONNECTING
+                        }
+                    )
+                }
+        }
+            .switchMap {
+                it.establishConnection(false)
+//                rxBluetooth.observeConnectDevice(
+//                    it,
+//                    TD_133_UUID.first().also { it.toString().e("asdf") })
             }
 //            .map { it.createInsecureRfcommSocketToServiceRecord(SPP_UUID) }
             .observeOnIO()
-            .doOnNext { subject.onNext(BluetoothConnectionStatus.CONNECTED) }
             .doOnError {
                 it.e("ConnectDevice")
                 subject.onNext(BluetoothConnectionStatus.CONNECT_FAILED)
                 dispose()
             }
+//            .subscribe { conn ->
+//
+//                conn.discoverServices()
+//                    .toObservable()
+//                    .flatMap { it.bluetoothGattServices.toObservable() }
+//                    .flatMap { it.characteristics.toObservable() }
+//                    .filter { it.uuid == TD_133_WRITE_UUID }
+//                    .subscribe({
+//                        conn.setupNotification(it)
+//                            .subscribe {
+//
+//                                it.subscribe({
+//                                    it.toHex().e("SETUP")
+//                                },
+//                                    { it.e(); })
+//
+//                                conn.readCharacteristic(uuid)
+//                                    .subscribe({ (it.toHex() + "$uuid").w() },
+//                                        { it.e(); })
+//                            }
+//                    },
+//                        { it.e(); })
+//
+//
+//            }
             .readDevice()
 
 
-    private fun Observable<BluetoothSocket>.readDevice(): Disposable =
-        subscribe {
+    private fun Observable<RxBleConnection>.readDevice(): Disposable =
 
-            bluetoothConnection = BluetoothConnection(it).apply {
-                temperatureSubscribe = observeByteStream()
-                    .observeOnIO()
-                    .scan(BytesCollector(LENGTH)) { collector, value ->
-                        collector.apply {
-                            if (isCompleted) {
-                                currentLength = 0
-                            }
-                            var passed = false
-                            when (currentLength) {
-                                0 -> if (value == HEAD_FIRST_BYTE) passed = true
-                                1 -> if (value == HEAD_SECOND_BYTE) passed = true
-                                LENGTH - TAIL_LENGTH - 0 -> if (value == TAIL_FIRST_BYTE) passed =
-                                        true
-                                LENGTH - TAIL_LENGTH + 1 -> if (value == TAIL_SECOND_BYTE) passed =
-                                        true
-                                in PAYLOAD_RANGE -> passed = true
-                            }
-
-                            if (!passed) {
-                                currentLength = 0
-                            } else {
-                                buffer[currentLength++] = value
-                            }
-                        }
-                    }
-                    .filter { it.isCompleted }
-                    .flatMap { TemperatureByteProcessor.process(it) }
-                    .map {
-                        TemperatureMessage(
-                            TemperatureMessageStatus.NORMAL,
-                            TemperatureMessagePayload.Data(it)
-                        )
-                    }
-                    .doOnNext {
-                        it.e("Data")
-                    }
-                    .doOnError {
-                        it.e("BluetoothRead")
-                        subject.onNext(BluetoothConnectionStatus.READ_ERROR)
-                        dispose()
-                    }
-                    .let {
-                        Temperature.publish(it)
-                    }
-            }
+        flatMap { conn ->
+            conn.discoverServices().toObservable().map { conn to it }
         }
+            .flatMap { (conn, it) ->
+                it.bluetoothGattServices
+                    .flatMap { it.characteristics }
+                    .map { conn to it }
+                    .toObservable()
+            }
+            .filter { (_, it) -> it.uuid == TD_133_WRITE_UUID }
+            .flatMap { (conn, it) ->
+                conn.setupNotification(it).flatMap { it }
+            }
+            .observeOnIO()
+//            .scan(BytesCollector(LENGTH)) { collector, value ->
+//                collector.apply {
+//                    if (isCompleted) {
+//                        currentLength = 0
+//                    }
+//                    var passed = false
+//                    when (currentLength) {
+//                        0 -> if (value == HEAD_FIRST_BYTE) passed = true
+//                        1 -> if (value == HEAD_SECOND_BYTE) passed = true
+//                        LENGTH - TAIL_LENGTH - 0 -> if (value == TAIL_FIRST_BYTE) passed =
+//                                true
+//                        LENGTH - TAIL_LENGTH + 1 -> if (value == TAIL_SECOND_BYTE) passed =
+//                                true
+//                        in PAYLOAD_RANGE -> passed = true
+//                    }
+//
+//                    if (!passed) {
+//                        currentLength = 0
+//                    } else {
+//                        buffer[currentLength++] = value
+//                    }
+//                }
+//            }
+//            .filter { it.isCompleted }
+            .map { it.e("RawData"); BytesCollector(LENGTH, it.size, it) }
+            .flatMap { TemperatureByteProcessor.process(it) }
+            .doOnNext {
+                it.e("Data")
+            }
+            .doOnError {
+                it.e("BluetoothRead")
+                subject.onNext(BluetoothConnectionStatus.READ_ERROR)
+                dispose()
+            }
+            .map {
+                TemperatureMessage(
+                    TemperatureMessageStatus.NORMAL,
+                    TemperatureMessagePayload.Data(it)
+                )
+            }
+            .let {
+                Temperature.publish(it)
+            }
 
 
     fun dispose() {

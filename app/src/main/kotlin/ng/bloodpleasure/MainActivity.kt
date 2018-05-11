@@ -2,13 +2,14 @@ package ng.bloodpleasure
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.bluetooth.BluetoothAdapter
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.Settings
 import android.view.WindowManager
-import com.github.ivbaranov.rxbluetooth.RxBluetooth
+import com.polidea.rxandroidble2.RxBleClient
 import io.reactivex.disposables.Disposable
+import io.reactivex.plugins.RxJavaPlugins
 import ng.bloodpleasure.data.Temperature
 import ng.bloodpleasure.data.TemperatureMessage
 import ng.bloodpleasure.data.TemperatureMessagePayload
@@ -19,18 +20,16 @@ import ng.bloodpleasure.ui.webview.BpWebChromeClient
 import ng.bloodpleasure.ui.webview.BpWebViewClient
 import ng.bloodpleasure.util.*
 import ng.bloodpleasure.util.activity.BaseActivity
-import ng.bloodpleasure.util.bt.EnableStatus
 import ng.bloodpleasure.util.bt.TemperatureBluetoothHandler
-import ng.bloodpleasure.util.bt.dispose
-import ng.bloodpleasure.util.bt.enableStatus
 import org.jetbrains.anko.longToast
 import org.jetbrains.anko.setContentView
 import org.jetbrains.anko.toast
 
+
 @SuppressLint("HardwareIds")
 class MainActivity : BaseActivity() {
 
-    private val rxBluetooth: RxBluetooth by lazy { RxBluetooth(this) }
+    private val rxBluetooth: RxBleClient by lazy { RxBleClient.create(this) }
     private lateinit var ui: MainActivityUi
     private var temperatureBluetoothHandler: TemperatureBluetoothHandler? = null
     private var hardwareSubscription: Disposable? = null
@@ -52,6 +51,8 @@ class MainActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        RxJavaPlugins.setErrorHandler { it.e("ErrorHandler") }
+
         window.setFlags(
             WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
@@ -68,14 +69,7 @@ class MainActivity : BaseActivity() {
 
     private fun onPageReady() {
         subscribeHardware()
-        if (checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(
-                arrayOf(android.Manifest.permission.ACCESS_COARSE_LOCATION),
-                REQUEST_PERMISSION_COARSE_LOCATION
-            )
-        } else {
-            connect()
-        }
+        connect()
     }
 
     private fun onPageMute() {
@@ -123,12 +117,6 @@ class MainActivity : BaseActivity() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        ui.jsStatus(true)
-    }
-
-
     fun connect() {
         disconnect()
 //        if (isDebugging) {
@@ -151,17 +139,25 @@ class MainActivity : BaseActivity() {
 //            return
 //        }
 
-        when (rxBluetooth.enableStatus) {
-            EnableStatus.NO_MODULE -> {
-                longToast("设备上没有蓝牙模块")
-            }
 
-            EnableStatus.NOT_ENABLED -> {
-                rxBluetooth.enableBluetooth(this, REQUEST_ENABLE_BT)
-            }
+        when (rxBluetooth.state!!) {
 
-            EnableStatus.ENABLED -> {
-                temperatureBluetoothHandler = TemperatureBluetoothHandler(rxBluetooth).apply {
+            RxBleClient.State.BLUETOOTH_NOT_AVAILABLE -> longToast("设备上没有蓝牙模块")
+
+            RxBleClient.State.LOCATION_PERMISSION_NOT_GRANTED, RxBleClient.State.LOCATION_SERVICES_NOT_ENABLED ->
+                requestPermissions(
+                    arrayOf(android.Manifest.permission.ACCESS_COARSE_LOCATION),
+                    REQUEST_PERMISSION_COARSE_LOCATION
+                )
+
+            RxBleClient.State.BLUETOOTH_NOT_ENABLED ->
+                startActivityForResult(
+                    Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE),
+                    REQUEST_ENABLE_BT
+                )
+
+            RxBleClient.State.READY -> TemperatureBluetoothHandler(rxBluetooth)
+                .apply {
                     hardwareConnectionSubscription =
                             connectionStatus
                                 .doOnNext {
@@ -173,12 +169,11 @@ class MainActivity : BaseActivity() {
                                         TemperatureMessagePayload.Connection(it)
                                     )
                                 }
-                                .subscribe { Temperature.publish(it.toFlowable()) }
-
-                    connect()
+                                .subscribe { Temperature.publish(it.toObservable()) }
                 }
-            }
+                .connect()
         }
+
     }
 
     private fun disconnect() {
@@ -190,6 +185,11 @@ class MainActivity : BaseActivity() {
         hardwareSubscription.safeDispose()
     }
 
+    override fun onResume() {
+        super.onResume()
+        ui.jsStatus(true)
+    }
+
     override fun onStop() {
         super.onStop()
         ui.jsStatus(false)
@@ -199,7 +199,7 @@ class MainActivity : BaseActivity() {
         super.onDestroy()
         disconnect()
         unsubscribeHardware()
-        rxBluetooth.dispose()
+//        rxBluetooth.dispose()
     }
 
 }
