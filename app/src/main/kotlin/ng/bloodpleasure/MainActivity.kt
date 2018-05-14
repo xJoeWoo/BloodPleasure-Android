@@ -13,7 +13,6 @@ import io.reactivex.plugins.RxJavaPlugins
 import ng.bloodpleasure.data.Temperature
 import ng.bloodpleasure.data.TemperatureMessage
 import ng.bloodpleasure.data.TemperatureMessagePayload
-import ng.bloodpleasure.data.TemperatureMessageStatus
 import ng.bloodpleasure.ui.MainActivityUi
 import ng.bloodpleasure.ui.webview.BpJsInterface
 import ng.bloodpleasure.ui.webview.BpWebChromeClient
@@ -59,7 +58,7 @@ class MainActivity : BaseActivity() {
         )
 
         ui = MainActivityUi(
-            BpJsInterface(androidId, { onPageReady() }, { onPageMute() }),
+            BpJsInterface(androidId, { onPageReady() }, { onPageMute() }, { connect() }),
             BpWebViewClient(),
             BpWebChromeClient()
         )
@@ -156,8 +155,11 @@ class MainActivity : BaseActivity() {
                     REQUEST_ENABLE_BT
                 )
 
-            RxBleClient.State.READY -> TemperatureBluetoothHandler(rxBluetooth)
+            RxBleClient.State.READY -> (temperatureBluetoothHandler ?: TemperatureBluetoothHandler(
+                rxBluetooth
+            ))
                 .apply {
+                    temperatureBluetoothHandler = this
                     hardwareConnectionSubscription =
                             connectionStatus
                                 .doOnNext {
@@ -165,7 +167,6 @@ class MainActivity : BaseActivity() {
                                 }
                                 .map {
                                     TemperatureMessage(
-                                        TemperatureMessageStatus.CONNECTION,
                                         TemperatureMessagePayload.Connection(it)
                                     )
                                 }

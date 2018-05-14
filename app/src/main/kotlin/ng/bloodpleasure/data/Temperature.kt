@@ -20,7 +20,6 @@ object Temperature {
             .onErrorResumeNext { it: Throwable ->
                 Observable.just(
                     TemperatureMessage(
-                        TemperatureMessageStatus.ERROR,
                         TemperatureMessagePayload.Error(it.message!!)
                     )
                 )

@@ -9,7 +9,8 @@ import android.webkit.JavascriptInterface
 class BpJsInterface(
     private val hardwareId: String,
     private val onPageReady: () -> Unit,
-    private val onMute: () -> Unit
+    private val onMute: () -> Unit,
+    private val onConnect: () -> Unit
 ) {
 
     companion object {
@@ -28,6 +29,11 @@ class BpJsInterface(
     @JavascriptInterface
     fun mute() {
         onMute()
+    }
+
+    @JavascriptInterface
+    fun hardwareConnect() {
+        onConnect()
     }
 
 }

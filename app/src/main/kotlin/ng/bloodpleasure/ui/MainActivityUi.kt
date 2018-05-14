@@ -53,13 +53,13 @@ class MainActivityUi(
                 linearLayout {
                     orientation = LinearLayout.HORIZONTAL
 
-                    button("重连") {
-                        onClick { ui.owner.connect() }
-                    }
+//                    button("重连") {
+//                        onClick { ui.owner.connect() }
+//                    }
 
                     button("刷新") {
                         onClick { webView.reload() }
-                    }.lparams { leftMargin = 16 }
+                    }
                 }.lparams {
                     alignParentBottom()
                     centerHorizontally()
